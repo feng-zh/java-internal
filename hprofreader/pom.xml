@@ -3,4 +3,9 @@
   <groupId>com.hp.ts.rnd.tool.perf</groupId>
   <artifactId>hprofreader</artifactId>
   <version>1.0.0-SNAPSHOT</version>
+  <properties>
+  	<maven.compiler.source>1.5</maven.compiler.source>
+  	<maven.compiler.target>1.5</maven.compiler.target>
+  	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 </project>
