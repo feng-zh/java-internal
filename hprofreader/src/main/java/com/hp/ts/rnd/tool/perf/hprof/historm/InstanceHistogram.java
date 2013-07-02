@@ -30,10 +30,26 @@ import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofStringAccess.StringSetter;
 public class InstanceHistogram implements StringSetter {
 
 	public static class InstanceHistogramEntry {
-		public String className;
-		public int instanceCount;
-		public long instanceTotalSize;
-		public int instanceSize;
+		String className;
+		int instanceCount;
+		long instanceTotalSize;
+		int instanceSize;
+
+		public String getClassName() {
+			return className;
+		}
+
+		public int getInstanceCount() {
+			return instanceCount;
+		}
+
+		public long getInstanceTotalSize() {
+			return instanceTotalSize;
+		}
+
+		public int getInstanceSize() {
+			return instanceSize;
+		}
 
 		@Override
 		public String toString() {
@@ -145,26 +161,7 @@ public class InstanceHistogram implements StringSetter {
 	}
 
 	public static void main(String[] args) throws Exception {
-		InstanceHistogram histogram = new InstanceHistogram();
-		parse("heap.bin", new HprofMultipleVisitors(new HprofProcessProxy(
-				histogram)));
-		parse("heap.bin", new HprofMultipleVisitors(new HprofProcessProxy(
-				new HprofStringAccess(histogram)), new HprofProcessProxy(
-				new HprofHeapSkipAccess())));
-		List<InstanceHistogramEntry> entries = new ArrayList<InstanceHistogramEntry>();
-		for (List<InstanceHistogramEntry> list : histogram.nameEntries.values()) {
-			entries.addAll(list);
-		}
-		Collections.sort(entries, new Comparator<InstanceHistogramEntry>() {
-
-			public int compare(InstanceHistogramEntry p1,
-					InstanceHistogramEntry p2) {
-				long x = p1.instanceTotalSize;
-				long y = p2.instanceTotalSize;
-				return (x < y) ? -1 : ((x == y) ? 0 : 1);
-			}
-		});
-		Collections.reverse(entries);
+		List<InstanceHistogramEntry> entries = list("heap.bin");
 		for (InstanceHistogramEntry entry : entries) {
 			if (entry.instanceCount > 0) {
 				System.out.println(entry);
@@ -182,6 +179,31 @@ public class InstanceHistogram implements StringSetter {
 		} finally {
 			parser.close();
 		}
+	}
+
+	public static List<InstanceHistogramEntry> list(String fileName)
+			throws Exception {
+		InstanceHistogram histogram = new InstanceHistogram();
+		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
+				histogram)));
+		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
+				new HprofStringAccess(histogram)), new HprofProcessProxy(
+				new HprofHeapSkipAccess())));
+		List<InstanceHistogramEntry> entries = new ArrayList<InstanceHistogramEntry>();
+		for (List<InstanceHistogramEntry> list : histogram.nameEntries.values()) {
+			entries.addAll(list);
+		}
+		Collections.sort(entries, new Comparator<InstanceHistogramEntry>() {
+
+			public int compare(InstanceHistogramEntry p1,
+					InstanceHistogramEntry p2) {
+				long x = p1.instanceTotalSize;
+				long y = p2.instanceTotalSize;
+				return (x < y) ? -1 : ((x == y) ? 0 : 1);
+			}
+		});
+		Collections.reverse(entries);
+		return entries;
 	}
 
 }

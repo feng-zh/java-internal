@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en" ng-app>
+<head>
+<meta charset="utf-8">
+<title>My HTML File</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/bootstrap.css">
+<script
+	src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.min.js"></script>
+<script src="js/controllers.js"></script>
+</head>
+<body>
+	<div ng-controller="HistogramListCtrl">
+		<table>
+			<thead>
+				<tr>
+					<th>Class Name</th>
+					<th>Instance Count</th>
+					<th>Instance Total Size</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr ng-repeat="item in list">
+					<td>{{item.className}}</td>
+					<td>{{item.instanceCount}}</td>
+					<td>{{item.instanceTotalSize}}</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>
