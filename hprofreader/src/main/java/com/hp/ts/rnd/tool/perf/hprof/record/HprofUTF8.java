@@ -1,10 +1,8 @@
 package com.hp.ts.rnd.tool.perf.hprof.record;
 
-import java.io.UnsupportedEncodingException;
-
-import com.hp.ts.rnd.tool.perf.hprof.HprofDataException;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 
 @HprofRecordTag(value = 0x01, name = "UTF8")
 public class HprofUTF8 extends HprofRootRecord {
@@ -21,11 +19,7 @@ public class HprofUTF8 extends HprofRootRecord {
 	}
 
 	public String getString() {
-		try {
-			return new String(bytes, "UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new HprofDataException(e);
-		}
+		return HprofUtils.utf8ToString(bytes);
 	}
 
 	protected void readFields(int tagValue, HprofRecordReader reader) {

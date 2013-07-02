@@ -144,6 +144,5 @@ public class HprofHeapRecordReader extends HprofRootRecord implements
 	public void skip() {
 		long len = getDataLength() - loaded;
 		reader.skip(len);
-		System.out.println("skip: " + len);
 	}
 }

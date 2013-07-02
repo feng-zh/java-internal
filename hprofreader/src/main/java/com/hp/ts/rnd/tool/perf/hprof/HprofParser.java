@@ -15,6 +15,7 @@ import com.hp.ts.rnd.tool.perf.hprof.record.HprofUTF8;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofUnloadClass;
 import com.hp.ts.rnd.tool.perf.hprof.record.UnknownHprofRecod;
 
+/* Based on https://java.net/downloads/heap-snapshot/hprof-binary-format.html */
 public class HprofParser implements HprofReader, Closeable {
 
 	private HprofRecordReader reader;

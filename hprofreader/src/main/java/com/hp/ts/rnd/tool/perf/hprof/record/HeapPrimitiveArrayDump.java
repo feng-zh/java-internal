@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 
 @HprofRecordTag(value = 0x23, name = "PRIMITIVE ARRAY DUMP")
 public class HeapPrimitiveArrayDump extends HprofHeapRecord {
@@ -18,6 +19,8 @@ public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 
 	// used for lazy parsing
 	private int elementCount;
+
+	private int elementByteSize;
 
 	public long getArrayID() {
 		return arrayID;
@@ -34,6 +37,10 @@ public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 			elementCount = -1;
 		}
 		return elements;
+	}
+
+	public int getElementByteSize() {
+		return elementByteSize;
 	}
 
 	static int readU1AsInt(byte[] data, int pos) {
@@ -144,24 +151,26 @@ public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 		stacktraceNo = reader.readU4AsInt();
 		elementCount = reader.readU4AsInt();
 		elementType = (byte) reader.readU1AsInt();
-		elements = readElements(reader, elementCount, elementType);
+		byte[] bytes = readElements(reader, elementCount, elementType);
+		elementByteSize = bytes.length;
+		elements = bytes;
 		super.calcuateDataLength(reader);
 	}
 
-	private static Object readElements(HprofRecordReader reader, int count,
+	private static byte[] readElements(HprofRecordReader reader, int count,
 			int type) {
-		switch (type) {
-		case 4:// boolean
-		case 8:// byte
+		switch (HprofUtils.toPrimitiveCode(type, true)) {
+		case 'Z':// boolean
+		case 'B':// byte
 			return reader.readBytes(count);
-		case 5:// char
-		case 9:// short
+		case 'C':// char
+		case 'S':// short
 			return reader.readBytes(count << 1);
-		case 6:// float
-		case 10:// int
+		case 'F':// float
+		case 'I':// int
 			return reader.readBytes(count << 2);
-		case 7:// double
-		case 11:// long
+		case 'D':// double
+		case 'J':// long
 			return reader.readBytes(count << 3);
 		default:
 			throw new IllegalArgumentException("invalid element type: " + type);
