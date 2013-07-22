@@ -18,14 +18,21 @@ public abstract class HprofHeapRecord extends HprofRecord {
 		return dataLength;
 	}
 
-	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader)
+	final protected void readHeaders(int tagValue, HprofRecordReader reader)
 			throws HprofException {
 		reader.beginTag();
 	}
 
-	protected void calcuateDataLength(HprofRecordReader reader) {
+	final protected void readFields(HprofRecordReader reader) {
+		readRecord(reader);
 		dataLength = reader.endTag();
+	}
+
+	protected abstract void readRecord(HprofRecordReader reader);
+
+	// not support skip
+	protected boolean isSkip(long skipMask) {
+		return false;
 	}
 
 }

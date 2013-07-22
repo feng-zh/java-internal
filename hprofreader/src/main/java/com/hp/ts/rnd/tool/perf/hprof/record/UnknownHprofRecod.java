@@ -3,15 +3,18 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 import com.hp.ts.rnd.tool.perf.hprof.HprofDataException;
 import com.hp.ts.rnd.tool.perf.hprof.HprofException;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
 public class UnknownHprofRecod extends HprofRootRecord {
 
 	private int tagValue;
 
-	protected void readFields(int tagValue, HprofRecordReader reader)
-			throws HprofException {
+	protected void readHeaders(int tagValue, HprofRecordReader reader) {
+		super.readHeaders(tagValue, reader);
 		this.tagValue = tagValue;
-		super.readFields(tagValue, reader);
+	}
+
+	protected void readRecord(HprofRecordReader reader) throws HprofException {
 		long length = getDataLength();
 		long position = reader.getPosition();
 		try {
@@ -31,6 +34,11 @@ public class UnknownHprofRecod extends HprofRootRecord {
 	@Override
 	public String getTagName() {
 		return "UNKNOWN_TAG";
+	}
+
+	@Override
+	protected boolean isSkip(long skipMask) {
+		return HprofRecordType.isSkip(tagValue, skipMask);
 	}
 
 }

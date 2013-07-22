@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x22, name = "OBJECT ARRAY DUMP")
+@HprofRecordTag(subValue = 0x22, alias = "OBJECT ARRAY DUMP", value = HprofRecordType.HEAP_DUMP)
 public class HeapObjectArrayDump extends HprofHeapRecord {
 
 	private long arrayID;
@@ -31,8 +32,7 @@ public class HeapObjectArrayDump extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		arrayID = reader.readID();
 		stacktraceNo = reader.readU4AsInt();
 		int count = reader.readU4AsInt();
@@ -41,7 +41,6 @@ public class HeapObjectArrayDump extends HprofHeapRecord {
 		for (int i = 0; i < count; i++) {
 			elementIDs[i] = reader.readID();
 		}
-		super.calcuateDataLength(reader);
 	}
 
 	@Override

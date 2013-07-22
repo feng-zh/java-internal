@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x04, name = "ROOT NATIVE STACK")
+@HprofRecordTag(subValue = 0x04, alias = "ROOT NATIVE STACK", value = HprofRecordType.HEAP_DUMP)
 public class HeapRootNativeStack extends HprofHeapRecord {
 
 	private long objectID;
@@ -19,11 +20,9 @@ public class HeapRootNativeStack extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		objectID = reader.readID();
 		threadNo = reader.readU4AsInt();
-		super.calcuateDataLength(reader);
 	}
 
 	@Override

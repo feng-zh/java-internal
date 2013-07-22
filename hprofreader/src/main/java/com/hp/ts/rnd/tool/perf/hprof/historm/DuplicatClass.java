@@ -12,11 +12,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofParser;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordVisitor;
 import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 import com.hp.ts.rnd.tool.perf.hprof.record.HeapClassDump;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofLoadClass;
-import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofHeapSkipAccess;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofMultipleVisitors;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofProcessProxy;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofProcessTarget;
@@ -45,6 +45,8 @@ public class DuplicatClass implements StringSetter {
 
 	@HprofProcessTarget
 	public void visitLoadClass(HprofLoadClass loadClass) {
+		// graphDB.addEdge(String, loadClass.getClassNameID(), ClassID,
+		// loadClass.getClassID());
 		List<Long> classIDList = classNameIdMap.get(loadClass.getClassNameID());
 		if (classIDList == null) {
 			classIDList = new ArrayList<Long>(1);
@@ -60,6 +62,7 @@ public class DuplicatClass implements StringSetter {
 	}
 
 	public void setUTF8Bytes(long id, byte[] utf8Bytes) {
+		// graphDB.retrieveNode(String, id).setValue(name);
 		List<Long> classIDList = classNameIdMap.remove(id);
 		if (classIDList != null) {
 			DuplicatClassEntry entry = new DuplicatClassEntry();
@@ -78,13 +81,13 @@ public class DuplicatClass implements StringSetter {
 		System.out.println(count + " <=> " + entries.size());
 	}
 
-	private static void parse(String fileName, HprofRecordVisitor visitor)
-			throws Exception {
+	private static void parse(String fileName, HprofRecordVisitor visitor,
+			long skipMask) throws Exception {
 		DataInputStream input = new DataInputStream(new BufferedInputStream(
 				new FileInputStream(fileName), 1024 * 1024));
 		HprofParser parser = new HprofParser(input);
 		try {
-			parser.parse(visitor);
+			parser.parse(visitor, skipMask);
 		} finally {
 			parser.close();
 		}
@@ -94,10 +97,11 @@ public class DuplicatClass implements StringSetter {
 			throws Exception {
 		DuplicatClass histogram = new DuplicatClass();
 		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
-				histogram)));
+				histogram)), HprofRecordType.STRINGS_IN_UTF8.mask());
 		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
-				new HprofStringAccess(histogram)), new HprofProcessProxy(
-				new HprofHeapSkipAccess())));
+				new HprofStringAccess(histogram))),
+				~HprofRecordType.STRINGS_IN_UTF8.mask());
+		// graphDB.listPath("?? statement ??");
 		List<DuplicatClassEntry> entries = new ArrayList<DuplicatClassEntry>();
 		for (Entry<Object, List<Long>> entry : histogram.classNameIdMap
 				.entrySet()) {

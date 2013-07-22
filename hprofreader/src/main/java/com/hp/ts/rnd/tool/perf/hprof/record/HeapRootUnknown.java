@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0xFF, name = "ROOT UNKNOWN")
+@HprofRecordTag(subValue = 0xFF, alias = "ROOT UNKNOWN", value = HprofRecordType.HEAP_DUMP)
 public class HeapRootUnknown extends HprofHeapRecord {
 
 	private long objectID;
@@ -13,10 +14,8 @@ public class HeapRootUnknown extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		objectID = reader.readID();
-		super.calcuateDataLength(reader);
 	}
 
 	@Override

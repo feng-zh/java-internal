@@ -4,9 +4,10 @@ import java.lang.reflect.Array;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 
-@HprofRecordTag(value = 0x23, name = "PRIMITIVE ARRAY DUMP")
+@HprofRecordTag(subValue = 0x23, alias = "PRIMITIVE ARRAY DUMP", value = HprofRecordType.HEAP_DUMP)
 public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 
 	private long arrayID;
@@ -145,8 +146,7 @@ public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		arrayID = reader.readID();
 		stacktraceNo = reader.readU4AsInt();
 		elementCount = reader.readU4AsInt();
@@ -154,7 +154,6 @@ public class HeapPrimitiveArrayDump extends HprofHeapRecord {
 		byte[] bytes = readElements(reader, elementCount, elementType);
 		elementByteSize = bytes.length;
 		elements = bytes;
-		super.calcuateDataLength(reader);
 	}
 
 	private static byte[] readElements(HprofRecordReader reader, int count,

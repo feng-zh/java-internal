@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x05, name = "STACK TRACE")
+@HprofRecordTag(HprofRecordType.STACK_TRACE)
 public class HprofStackTrace extends HprofRootRecord {
 
 	private int stacktraceNo;
@@ -14,8 +15,7 @@ public class HprofStackTrace extends HprofRootRecord {
 
 	private long[] framesIDs;
 
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		stacktraceNo = reader.readU4AsInt();
 		threadNo = reader.readU4AsInt();
 		framesCount = reader.readU4AsInt();

@@ -15,16 +15,13 @@ import com.hp.ts.rnd.tool.perf.hprof.record.HeapRootThreadObject;
 import com.hp.ts.rnd.tool.perf.hprof.record.HeapRootUnknown;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofRootRecord;
 
-public class HprofHeapRecordReader extends HprofRootRecord implements
-		HprofReader {
+public class HprofHeapReader extends HprofRootRecord implements HprofReader {
 
 	private HprofRecordReader reader;
 
 	private RecordDef<?>[] recordDefs = new RecordDef<?>[256];
 
 	private boolean eof;
-
-	private long loaded;
 
 	private static class RecordDef<T extends HprofRecord> {
 		Class<T> recordDefClass;
@@ -52,10 +49,7 @@ public class HprofHeapRecordReader extends HprofRootRecord implements
 
 	private int tagValue;
 
-	public static final int TAG_HEAP_DUMP = 0x0C;
-	public static final int TAG_HEAP_DUMP_SEGMENT = 0x1C;
-
-	public HprofHeapRecordReader() {
+	public HprofHeapReader() {
 		initialRecordDefs();
 	}
 
@@ -92,24 +86,31 @@ public class HprofHeapRecordReader extends HprofRootRecord implements
 
 	@Override
 	public String getTagName() {
+		return getTagType().name();
+	}
+
+	private HprofRecordType getTagType() {
 		int tag = getTagValue();
-		if (tag == TAG_HEAP_DUMP) {
-			return "HEAP DUMP";
-		} else if (tag == TAG_HEAP_DUMP_SEGMENT) {
-			return "HEAP DUMP SEGMENT";
+		if (tag == HprofRecordType.HEAP_DUMP.tagValue()) {
+			return HprofRecordType.HEAP_DUMP;
+		} else if (tag == HprofRecordType.HEAP_DUMP_SEGMENT.tagValue()) {
+			return HprofRecordType.HEAP_DUMP_SEGMENT;
 		} else {
 			throw new IllegalArgumentException("invalid tag: " + tag);
 		}
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader)
+	protected void readHeaders(int tagValue, HprofRecordReader reader)
 			throws HprofException {
-		super.readFields(tagValue, reader);
+		super.readHeaders(tagValue, reader);
 		this.tagValue = tagValue;
 		this.reader = reader;
+	}
+
+	@Override
+	protected void readRecord(HprofRecordReader reader) throws HprofException {
 		this.eof = false;
-		this.loaded = 0;
 		reader.limit(getDataLength());
 	}
 
@@ -131,8 +132,8 @@ public class HprofHeapRecordReader extends HprofRootRecord implements
 					reader.getPosition() - 1));
 		}
 		HprofRecord instance = recordDef.getInstance();
-		instance.readFields(tagValue, reader);
-		loaded += instance.getLength();
+		instance.readHeaders(tagValue, reader);
+		instance.readFields(reader);
 		return instance;
 	}
 
@@ -141,8 +142,8 @@ public class HprofHeapRecordReader extends HprofRootRecord implements
 	}
 
 	@Override
-	public void skip() {
-		long len = getDataLength() - loaded;
-		reader.skip(len);
+	protected boolean isSkip(long skipMask) {
+		return (getTagType().mask() & skipMask) != 0;
 	}
+
 }

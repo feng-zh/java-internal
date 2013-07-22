@@ -24,13 +24,22 @@ public abstract class HprofRootRecord extends HprofRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader)
+	protected void readHeaders(int tagValue, HprofRecordReader reader)
 			throws HprofException {
 		long rtime = reader.readU4AsLong();
 		recordTime = reader.convertTime(rtime);
 		dataLength = reader.readU4AsLong();
 	}
-	
+
+	@Override
+	final protected void readFields(HprofRecordReader reader)
+			throws HprofException {
+		readRecord(reader);
+	}
+
+	protected abstract void readRecord(HprofRecordReader reader)
+			throws HprofException;
+
 	@Override
 	public String toString() {
 		return String.format("%s [tagValue=0x%02x, dataLength=%s]", getClass()

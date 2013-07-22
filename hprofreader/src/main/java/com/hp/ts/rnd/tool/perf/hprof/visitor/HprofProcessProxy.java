@@ -11,6 +11,7 @@ import java.util.Map;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecord;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordVisitor;
+import com.hp.ts.rnd.tool.perf.hprof.record.HprofHeapRecord;
 
 public class HprofProcessProxy implements HprofRecordVisitor {
 
@@ -19,6 +20,8 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 	private Object delegator;
 
 	private List<MethodProxy> proxyMethodList = new ArrayList<MethodProxy>();
+
+	private boolean compositeRequired = false;
 
 	abstract class MethodProxy implements HprofRecordVisitor {
 
@@ -42,10 +45,7 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 	}
 
 	private static Class<?>[][] MatchParameters = {
-			{ HprofRecord.class, HprofRecord.class, Long.TYPE },
-			{ HprofRecord.class, null, Long.TYPE },
-			{ HprofRecord.class, HprofRecord.class, null },
-			{ HprofRecord.class, null, null } };
+			{ HprofRecord.class, Long.TYPE }, { HprofRecord.class, null } };
 
 	protected HprofProcessProxy() {
 		delegator = this;
@@ -100,10 +100,16 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 					}
 					targets = new Class<?>[] { paramTypes[0] };
 				}
+				for (Class<?> target : targets) {
+					// NOTE: Here is hard depends on Heap record
+					if (HprofHeapRecord.class.isAssignableFrom(target)) {
+						compositeRequired = true;
+					}
+				}
 				final Class<?>[] parameters = MatchParameters[matched];
 				proxyMethodList.add(new MethodProxy(targets, m) {
-					public void visitRecord(HprofRecord record,
-							HprofRecord parent, long position) {
+
+					private void visitRecord(HprofRecord record, long position) {
 						Object[] args = new Object[getMethod()
 								.getParameterTypes().length];
 						int i = 0;
@@ -111,9 +117,6 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 							args[i++] = record;
 						}
 						if (parameters[1] != null) {
-							args[i++] = parent;
-						}
-						if (parameters[2] != null) {
 							args[i++] = position;
 						}
 						try {
@@ -131,6 +134,17 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 							throw new RuntimeException(e);
 						}
 					}
+
+					public void visitSingleRecord(HprofRecord record,
+							long position) {
+						visitRecord(record, position);
+					}
+
+					public HprofRecordVisitor visitCompositeRecord(
+							HprofRecord record, long position) {
+						visitRecord(record, position);
+						return this;
+					}
 				});
 			}
 		}
@@ -142,8 +156,7 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 		}
 	}
 
-	final public void visitRecord(HprofRecord record, HprofRecord parent,
-			long position) {
+	private void visitRecord(HprofRecord record, long position) {
 		Class<? extends HprofRecord> clz = record.getClass();
 		BitSet bs = recordClassMatches.get(clz);
 		if (bs == null) {
@@ -160,7 +173,21 @@ public class HprofProcessProxy implements HprofRecordVisitor {
 			}
 		}
 		for (int i = bs.nextSetBit(0); i >= 0; i = bs.nextSetBit(i + 1)) {
-			proxyMethodList.get(i).visitRecord(record, parent, position);
+			proxyMethodList.get(i).visitSingleRecord(record, position);
+		}
+	}
+
+	final public void visitSingleRecord(HprofRecord record, long position) {
+		visitRecord(record, position);
+	}
+
+	final public HprofRecordVisitor visitCompositeRecord(HprofRecord record,
+			long position) {
+		visitRecord(record, position);
+		if (compositeRequired) {
+			return this;
+		} else {
+			return null;
 		}
 	}
 }

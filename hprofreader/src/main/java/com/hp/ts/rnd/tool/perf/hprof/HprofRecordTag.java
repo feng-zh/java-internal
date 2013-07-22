@@ -9,8 +9,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface HprofRecordTag {
 
-	String name();
+	String alias() default "";
 
-	int value();
+	int subValue() default 0;
+
+	HprofRecordType value();
 
 }

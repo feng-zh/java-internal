@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x20, name = "CLASS DUMP")
+@HprofRecordTag(subValue = 0x20, alias = "CLASS DUMP", value = HprofRecordType.HEAP_DUMP)
 public class HeapClassDump extends HprofHeapRecord {
 
 	private long classID;
@@ -99,8 +100,7 @@ public class HeapClassDump extends HprofHeapRecord {
 	private InstanceField[] instanceFields;
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		classID = reader.readID();
 		stacktraceNo = reader.readU4AsInt();
 		superClassID = reader.readID();
@@ -127,7 +127,6 @@ public class HeapClassDump extends HprofHeapRecord {
 		for (int i = 0; i < count; i++) {
 			instanceFields[i] = InstanceField.readFields(reader);
 		}
-		super.calcuateDataLength(reader);
 	}
 
 	static long readEntryType(int entryType, HprofRecordReader reader) {

@@ -2,14 +2,14 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x03, name = "UNLOAD CLASS")
+@HprofRecordTag(HprofRecordType.UNLOAD_CLASS)
 public class HprofUnloadClass extends HprofRootRecord {
 
 	private long classNo;
 
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		classNo = reader.readU4AsLong();
 	}
 

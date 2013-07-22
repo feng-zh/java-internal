@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x01, name = "ROOT JNI GLOBAL")
+@HprofRecordTag(subValue = 0x01, alias = "ROOT JNI GLOBAL", value = HprofRecordType.HEAP_DUMP)
 public class HeapRootJniGlobal extends HprofHeapRecord {
 
 	private long objectID;
@@ -19,11 +20,9 @@ public class HeapRootJniGlobal extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		objectID = reader.readID();
 		jniGlobalRefID = reader.readID();
-		super.calcuateDataLength(reader);
 	}
 
 	@Override

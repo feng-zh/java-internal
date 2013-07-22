@@ -9,6 +9,7 @@ import java.io.IOException;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofHeader;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofHeapDumpEnd;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofLoadClass;
+import com.hp.ts.rnd.tool.perf.hprof.record.HprofRootRecord;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofStackFrame;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofStackTrace;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofUTF8;
@@ -20,14 +21,14 @@ public class HprofParser implements HprofReader, Closeable {
 
 	private HprofRecordReader reader;
 	private HprofHeader header;
-	private RecordDef<?>[] recordDefs = new RecordDef<?>[256];
+	private RootRecordDef<?>[] rootRecordDefs = new RootRecordDef<?>[256];
 	private DataInputStream input;
 
-	private static class RecordDef<T extends HprofRecord> {
+	private static class RootRecordDef<T extends HprofRootRecord> {
 		Class<T> recordDefClass;
 		T recordInstance;
 
-		public RecordDef(Class<T> clasz) {
+		public RootRecordDef(Class<T> clasz) {
 			this.recordDefClass = clasz;
 		}
 
@@ -54,10 +55,10 @@ public class HprofParser implements HprofReader, Closeable {
 	}
 
 	private void initialRecordDefs() {
-		recordDefs[HprofHeapRecordReader.TAG_HEAP_DUMP] = new RecordDef<HprofHeapRecordReader>(
-				HprofHeapRecordReader.class);
-		recordDefs[HprofHeapRecordReader.TAG_HEAP_DUMP_SEGMENT] = new RecordDef<HprofHeapRecordReader>(
-				HprofHeapRecordReader.class);
+		rootRecordDefs[HprofRecordType.HEAP_DUMP.tagValue()] = new RootRecordDef<HprofHeapReader>(
+				HprofHeapReader.class);
+		rootRecordDefs[HprofRecordType.HEAP_DUMP_SEGMENT.tagValue()] = new RootRecordDef<HprofHeapReader>(
+				HprofHeapReader.class);
 		addRecordDef(HprofHeader.class);
 		addRecordDef(HprofUTF8.class);
 		addRecordDef(HprofLoadClass.class);
@@ -67,21 +68,31 @@ public class HprofParser implements HprofReader, Closeable {
 		addRecordDef(HprofHeapDumpEnd.class);
 	}
 
-	private <T extends HprofRecord> void addRecordDef(Class<T> recordDef) {
+	private <T extends HprofRootRecord> void addRecordDef(Class<T> recordDef) {
 		int tagType = HprofRecord.getTagTypeByClass(recordDef);
-		if (recordDefs[tagType] != null) {
+		if (rootRecordDefs[tagType] != null) {
 			throw new IllegalArgumentException("duplicate record type "
-					+ tagType + " on " + recordDefs[tagType].getRecordClass()
-					+ " and " + recordDef);
+					+ tagType + " on "
+					+ rootRecordDefs[tagType].getRecordClass() + " and "
+					+ recordDef);
 		}
-		recordDefs[tagType] = new RecordDef<T>(recordDef);
+		rootRecordDefs[tagType] = new RootRecordDef<T>(recordDef);
 	}
 
 	public HprofRecord read() throws HprofException {
+		HprofRecord record = readRootRecordHeader();
+		if (record != null) {
+			record.readFields(reader);
+		}
+		return record;
+	}
+
+	private HprofRootRecord readRootRecordHeader() throws HprofException {
 		if (header == null) {
 			HprofRecord h = new HprofHeader();
 			// header
-			h.readFields(0, reader);
+			h.readHeaders(0, reader);
+			h.readFields(reader);
 			header = (HprofHeader) h;
 			reader.setHeader(header);
 			return header;
@@ -90,29 +101,44 @@ public class HprofParser implements HprofReader, Closeable {
 		if (tagValue == -1) {
 			return null;
 		}
-		RecordDef<?> recordClass = recordDefs[tagValue];
+		RootRecordDef<?> recordClass = rootRecordDefs[tagValue];
 		if (recordClass == null) {
-			HprofRecord unknown = new UnknownHprofRecod();
-			unknown.readFields(tagValue, reader);
+			HprofRootRecord unknown = new UnknownHprofRecod();
+			((HprofRecord) unknown).readHeaders(tagValue, reader);
 			return unknown;
 		}
-		HprofRecord record = recordClass.getInstance();
-		record.readFields(tagValue, reader);
+		HprofRootRecord record = recordClass.getInstance();
+		((HprofRecord) record).readHeaders(tagValue, reader);
 		return record;
 	}
 
-	public void parse(HprofRecordVisitor visitor) {
-		HprofRecord record;
+	public void parse(HprofRecordVisitor visitor, long skipMask) {
+		HprofRootRecord record;
 		long position = reader.getPosition();
-		while ((record = read()) != null) {
-			visitor.visitRecord(record, null, position);
-			if (record instanceof HprofReader) {
-				HprofRecord parent = record;
-				HprofReader subReader = (HprofReader) record;
-				position = reader.getPosition();
-				while ((record = subReader.read()) != null) {
-					visitor.visitRecord(record, parent, position);
+		while ((record = readRootRecordHeader()) != null) {
+			if (record.isSkip(skipMask)) {
+				reader.skip(record.getDataLength());
+			} else {
+				long startField = reader.getPosition();
+				((HprofRecord) record).readFields(reader);
+				long loaded = reader.getPosition() - startField;
+				if (record instanceof HprofReader) {
+					HprofRecordVisitor anotherVisitor = visitor
+							.visitCompositeRecord(record, position);
+					HprofReader subReader = (HprofReader) record;
 					position = reader.getPosition();
+					HprofRecord subRecord;
+					if (anotherVisitor != null) {
+						while ((subRecord = subReader.read()) != null) {
+							anotherVisitor.visitSingleRecord(subRecord,
+									position);
+							position = reader.getPosition();
+						}
+					} else {
+						reader.skip(record.getDataLength() - loaded);
+					}
+				} else {
+					visitor.visitSingleRecord(record, position);
 				}
 			}
 			position = reader.getPosition();
@@ -128,22 +154,27 @@ public class HprofParser implements HprofReader, Closeable {
 				new FileInputStream("heap.bin"), 1024 * 1024));
 		HprofParser parser = new HprofParser(input);
 		try {
-			parser.parse(new HprofRecordVisitor() {
+			parser.parse(
+					new HprofRecordVisitor() {
 
-				public void visitRecord(HprofRecord record, HprofRecord parent,
-						long position) {
-					if (parent == null
-							&& (record instanceof HprofHeader
-									|| record instanceof HprofHeapRecordReader
-									|| record instanceof HprofHeapDumpEnd || record instanceof UnknownHprofRecod)) {
-						System.out.println((parent != null ? "\t" : "")
-								+ record.getTagName() + "("
-								+ record.getLength() + ")@" + position + ": "
-								+ record);
-						record.skip();
-					}
-				}
-			});
+						public void visitSingleRecord(HprofRecord record,
+								long position) {
+							System.out.println("" + record.getTagName() + "("
+									+ record.getLength() + ")@" + position
+									+ ": " + record);
+						}
+
+						public HprofRecordVisitor visitCompositeRecord(
+								HprofRecord record, long position) {
+							System.out.println("" + record.getTagName() + "("
+									+ record.getLength() + ")@" + position
+									+ ": " + record);
+							return null;
+						}
+					},
+					(HprofRecordType.HEAP_DUMP.mask()
+							| HprofRecordType.HEAP_DUMP_SEGMENT.mask() | HprofRecordType.HEAP_DUMP_END
+							.mask()));
 		} catch (Exception e) {
 			e.printStackTrace(System.out);
 		} finally {

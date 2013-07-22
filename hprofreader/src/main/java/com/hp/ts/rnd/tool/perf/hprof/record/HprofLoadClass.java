@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x02, name = "LOAD CLASS")
+@HprofRecordTag(HprofRecordType.LOAD_CLASS)
 public class HprofLoadClass extends HprofRootRecord {
 
 	private int classNo;
@@ -14,8 +15,7 @@ public class HprofLoadClass extends HprofRootRecord {
 
 	private long classNameID;
 
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		classNo = reader.readU4AsInt();
 		classID = reader.readID();
 		stacktraceNo = reader.readU4AsInt();

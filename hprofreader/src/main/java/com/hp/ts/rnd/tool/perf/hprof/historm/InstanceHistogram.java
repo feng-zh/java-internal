@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofParser;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordVisitor;
 import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 import com.hp.ts.rnd.tool.perf.hprof.record.HeapClassDump;
@@ -20,7 +21,6 @@ import com.hp.ts.rnd.tool.perf.hprof.record.HeapObjectArrayDump;
 import com.hp.ts.rnd.tool.perf.hprof.record.HeapPrimitiveArrayDump;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofHeader;
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofLoadClass;
-import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofHeapSkipAccess;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofMultipleVisitors;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofProcessProxy;
 import com.hp.ts.rnd.tool.perf.hprof.visitor.HprofProcessTarget;
@@ -169,13 +169,13 @@ public class InstanceHistogram implements StringSetter {
 		}
 	}
 
-	private static void parse(String fileName, HprofRecordVisitor visitor)
-			throws Exception {
+	private static void parse(String fileName, HprofRecordVisitor visitor,
+			long skipMask) throws Exception {
 		DataInputStream input = new DataInputStream(new BufferedInputStream(
 				new FileInputStream(fileName), 1024 * 1024));
 		HprofParser parser = new HprofParser(input);
 		try {
-			parser.parse(visitor);
+			parser.parse(visitor, skipMask);
 		} finally {
 			parser.close();
 		}
@@ -185,10 +185,10 @@ public class InstanceHistogram implements StringSetter {
 			throws Exception {
 		InstanceHistogram histogram = new InstanceHistogram();
 		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
-				histogram)));
+				histogram)), HprofRecordType.STRINGS_IN_UTF8.mask());
 		parse(fileName, new HprofMultipleVisitors(new HprofProcessProxy(
-				new HprofStringAccess(histogram)), new HprofProcessProxy(
-				new HprofHeapSkipAccess())));
+				new HprofStringAccess(histogram))),
+				~HprofRecordType.STRINGS_IN_UTF8.mask());
 		List<InstanceHistogramEntry> entries = new ArrayList<InstanceHistogramEntry>();
 		for (List<InstanceHistogramEntry> list : histogram.nameEntries.values()) {
 			entries.addAll(list);

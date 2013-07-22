@@ -2,9 +2,10 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 import com.hp.ts.rnd.tool.perf.hprof.HprofUtils;
 
-@HprofRecordTag(value = 0x01, name = "UTF8")
+@HprofRecordTag(HprofRecordType.STRINGS_IN_UTF8)
 public class HprofUTF8 extends HprofRootRecord {
 
 	private byte[] bytes;
@@ -22,8 +23,7 @@ public class HprofUTF8 extends HprofRootRecord {
 		return HprofUtils.utf8ToString(bytes);
 	}
 
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		id = reader.readID();
 		bytes = reader.readBytes((int) getDataLength()
 				- reader.getIdentifierSize());

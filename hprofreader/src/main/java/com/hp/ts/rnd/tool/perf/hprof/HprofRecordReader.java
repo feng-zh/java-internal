@@ -150,7 +150,7 @@ final public class HprofRecordReader {
 	}
 
 	public long convertTime(long time) {
-		return header.getDumpTime() + time;
+		return header.getRecordTime() + time;
 	}
 
 	public int endTag() {

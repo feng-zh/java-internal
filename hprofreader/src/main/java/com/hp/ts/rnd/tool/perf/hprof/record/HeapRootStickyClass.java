@@ -2,8 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof.record;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordReader;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordTag;
+import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
 
-@HprofRecordTag(value = 0x05, name = "ROOT STICKY CLASS")
+@HprofRecordTag(subValue = 0x05, alias = "ROOT STICKY CLASS", value = HprofRecordType.HEAP_DUMP)
 // System class
 public class HeapRootStickyClass extends HprofHeapRecord {
 
@@ -14,10 +15,8 @@ public class HeapRootStickyClass extends HprofHeapRecord {
 	}
 
 	@Override
-	protected void readFields(int tagValue, HprofRecordReader reader) {
-		super.readFields(tagValue, reader);
+	protected void readRecord(HprofRecordReader reader) {
 		objectID = reader.readID();
-		super.calcuateDataLength(reader);
 	}
 
 	@Override

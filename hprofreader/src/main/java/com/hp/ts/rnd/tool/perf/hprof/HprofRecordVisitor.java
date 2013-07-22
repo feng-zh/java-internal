@@ -2,7 +2,9 @@ package com.hp.ts.rnd.tool.perf.hprof;
 
 public interface HprofRecordVisitor {
 
-	public void visitRecord(HprofRecord record, HprofRecord parent,
+	public void visitSingleRecord(HprofRecord record, long position);
+
+	public HprofRecordVisitor visitCompositeRecord(HprofRecord record,
 			long position);
 
 }
