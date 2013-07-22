@@ -97,7 +97,7 @@ public class HprofParser implements HprofReader, Closeable {
 			reader.setHeader(header);
 			return header;
 		}
-		int tagValue = reader.readByte();
+		int tagValue = reader.read();
 		if (tagValue == -1) {
 			return null;
 		}
@@ -172,7 +172,7 @@ public class HprofParser implements HprofReader, Closeable {
 							return null;
 						}
 					},
-					(HprofRecordType.HEAP_DUMP.mask()
+					~(HprofRecordType.HEAP_DUMP.mask()
 							| HprofRecordType.HEAP_DUMP_SEGMENT.mask() | HprofRecordType.HEAP_DUMP_END
 							.mask()));
 		} catch (Exception e) {

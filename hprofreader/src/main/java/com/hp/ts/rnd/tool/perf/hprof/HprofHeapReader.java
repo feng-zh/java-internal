@@ -118,7 +118,7 @@ public class HprofHeapReader extends HprofRootRecord implements HprofReader {
 		if (eof) {
 			return null;
 		}
-		int tagValue = reader.readByte();
+		int tagValue = reader.read();
 		if (tagValue == -1) {
 			// reset limit
 			reader.limit(0);
