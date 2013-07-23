@@ -9,6 +9,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.hp.ts.rnd.tool.perf.hprof.HprofParser;
 import com.hp.ts.rnd.tool.perf.hprof.HprofRecordType;
@@ -31,7 +33,7 @@ public class InstanceHistogram implements StringSetter {
 
 	public static class InstanceHistogramEntry {
 		String className;
-		int instanceCount;
+		private int instanceCount;
 		long instanceTotalSize;
 		int instanceSize;
 
@@ -41,6 +43,10 @@ public class InstanceHistogram implements StringSetter {
 
 		public int getInstanceCount() {
 			return instanceCount;
+		}
+
+		public synchronized void incInstanceCount() {
+			instanceCount++;
 		}
 
 		public long getInstanceTotalSize() {
@@ -63,7 +69,7 @@ public class InstanceHistogram implements StringSetter {
 
 	private Map<Long, InstanceHistogramEntry> classEntries = new HashMap<Long, InstanceHistogramEntry>();
 
-	private Map<String, InstanceHistogramEntry> arrayEntries = new HashMap<String, InstanceHistogramEntry>();
+	private ConcurrentMap<String, InstanceHistogramEntry> arrayEntries = new ConcurrentHashMap<String, InstanceHistogramEntry>();
 
 	private InstanceHistogramEntry classEntry = new InstanceHistogramEntry();
 
@@ -93,7 +99,7 @@ public class InstanceHistogram implements StringSetter {
 		long classID = classDump.getClassID();
 		InstanceHistogramEntry entry = classEntries.get(classID);
 		entry.instanceSize = classDump.getInstanceSize();
-		classEntry.instanceCount++;
+		classEntry.incInstanceCount();
 		for (StaticField staticField : classDump.getStaticFields()) {
 			classEntry.instanceTotalSize += HprofUtils.sizeOfPrimitiveOrObject(
 					staticField.getEntryType(), idSize);
@@ -105,7 +111,7 @@ public class InstanceHistogram implements StringSetter {
 	public void visitInstanceDump(HeapInstanceDump instanceDump) {
 		long classID = instanceDump.getClassID();
 		InstanceHistogramEntry entry = classEntries.get(classID);
-		entry.instanceCount++;
+		entry.incInstanceCount();
 		entry.instanceTotalSize += instanceDump.getFieldValues().length;
 	}
 
@@ -116,9 +122,13 @@ public class InstanceHistogram implements StringSetter {
 		InstanceHistogramEntry entry = arrayEntries.get(arrayName);
 		if (entry == null) {
 			entry = new InstanceHistogramEntry();
-			arrayEntries.put(arrayName, entry);
+			InstanceHistogramEntry newEntry = arrayEntries.putIfAbsent(
+					arrayName, entry);
+			if (newEntry != null) {
+				entry = newEntry;
+			}
 		}
-		entry.instanceCount++;
+		entry.incInstanceCount();
 		entry.instanceTotalSize += arrayDump.getElementByteSize() + idSize * 2;
 	}
 
@@ -175,7 +185,7 @@ public class InstanceHistogram implements StringSetter {
 				new FileInputStream(fileName), 1024 * 1024));
 		HprofParser parser = new HprofParser(input);
 		try {
-			parser.parse(visitor, skipMask);
+			parser.accept(visitor, skipMask);
 		} finally {
 			parser.close();
 		}

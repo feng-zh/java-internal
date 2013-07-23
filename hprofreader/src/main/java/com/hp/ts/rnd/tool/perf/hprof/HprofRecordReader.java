@@ -1,15 +1,18 @@
 package com.hp.ts.rnd.tool.perf.hprof;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.DataInput;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 
 import com.hp.ts.rnd.tool.perf.hprof.record.HprofHeader;
 
 final public class HprofRecordReader {
 
 	private DataInput input;
+	private RandomAccessFile randomAccess;
 	private HprofHeader header;
 	private long position;
 	private long tagPos;
@@ -17,6 +20,13 @@ final public class HprofRecordReader {
 
 	public HprofRecordReader(DataInput input) {
 		this.input = input;
+		if (input instanceof RandomAccessFile) {
+			randomAccess = (RandomAccessFile) input;
+		}
+	}
+
+	boolean isRandomAccess() {
+		return randomAccess != null;
 	}
 
 	public long readID() {
@@ -198,6 +208,21 @@ final public class HprofRecordReader {
 
 	public long getPosition() {
 		return position;
+	}
+
+	public void close() throws IOException {
+		if (input instanceof Closeable) {
+			((Closeable) input).close();
+		}
+	}
+
+	void setPosition(long pos) {
+		try {
+			randomAccess.seek(pos);
+			position = randomAccess.getFilePointer();
+		} catch (IOException e) {
+			throw new HprofIOException("set position error", e);
+		}
 	}
 
 }

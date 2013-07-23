@@ -114,7 +114,19 @@ public class HprofHeapReader extends HprofRootRecord implements HprofReader {
 		reader.limit(getDataLength());
 	}
 
-	public HprofRecord read() throws HprofException {
+	public void accept(HprofRecordVisitor visitor, long skipMask)
+			throws HprofException {
+		HprofRecord record;
+		long position = reader.getPosition();
+		while ((record = read()) != null) {
+			if (!record.isSkip(skipMask)) {
+				visitor.visitSingleRecord(record, position);
+			}
+			position = reader.getPosition();
+		}
+	}
+
+	private HprofRecord read() throws HprofException {
 		if (eof) {
 			return null;
 		}

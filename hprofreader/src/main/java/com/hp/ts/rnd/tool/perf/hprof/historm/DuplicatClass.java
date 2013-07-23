@@ -87,7 +87,7 @@ public class DuplicatClass implements StringSetter {
 				new FileInputStream(fileName), 1024 * 1024));
 		HprofParser parser = new HprofParser(input);
 		try {
-			parser.parse(visitor, skipMask);
+			parser.accept(visitor, skipMask);
 		} finally {
 			parser.close();
 		}
