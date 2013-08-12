@@ -4,9 +4,9 @@ import java.util.List;
 
 import com.hp.ts.rnd.tool.perf.hprof.historm.InstanceHistogram;
 import com.hp.ts.rnd.tool.perf.hprof.historm.InstanceHistogram.InstanceHistogramEntry;
-import com.hp.ts.rnd.tool.perf.hprof.web.RestPath;
+import com.hp.ts.rnd.tool.perf.web.RestPath;
 
-public class InstanceHistogramController {
+class InstanceHistogramController {
 
 	private List<InstanceHistogramEntry> list;
 

@@ -1,4 +1,4 @@
-package com.hp.ts.rnd.tool.perf.hprof.web;
+package com.hp.ts.rnd.tool.perf.web;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -25,6 +25,7 @@ class RestMethodProxy {
 		MethodProxy(Method method, Object proxy) {
 			this.method = method;
 			this.proxy = proxy;
+			this.method.setAccessible(true);
 		}
 
 		public void invoke(String queryURI, OutputStream output,
