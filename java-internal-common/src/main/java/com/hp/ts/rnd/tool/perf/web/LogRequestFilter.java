@@ -36,8 +36,10 @@ class LogRequestFilter extends com.sun.net.httpserver.Filter {
 
 		};
 		exchange.setStreams(exchange.getRequestBody(), sizeStream);
+		exchange.setAttribute(WebContext.RESOURCE_ERROR, null);
 		try {
 			chain.doFilter(exchange);
+			checkLogError(exchange);
 		} catch (IOException e) {
 			logError(exchange, e);
 			throw e;
@@ -62,13 +64,38 @@ class LogRequestFilter extends com.sun.net.httpserver.Filter {
 		}
 	}
 
-	private void logError(HttpExchange exchange, Exception e) {
+	private void checkLogError(HttpExchange exchange) {
+		Throwable e = (Throwable) exchange
+				.getAttribute(WebContext.RESOURCE_ERROR);
+		if (e == null) {
+			return;
+		}
+		logError(exchange, e);
+	}
+
+	private void logError(HttpExchange exchange, Throwable e) {
+		// e.printStackTrace();
 		String errorLog = String.format(
 				"[%1$tF:%1$tT %1$tz] [error] [client %2$s] %3$s (%4$s)",
 				System.currentTimeMillis(), exchange.getRemoteAddress()
-						.getAddress().getHostAddress(), e.getMessage(),
+						.getAddress().getHostAddress(), getMessageChain(e),
 				exchange.getRequestURI());
 		System.err.println(errorLog);
+	}
+
+	private String getMessageChain(Throwable e) {
+		StringBuilder buf = new StringBuilder();
+		while (true) {
+			buf.append(e.getMessage());
+			e = e.getCause();
+			if (e == null) {
+				break;
+			} else {
+				buf.append(" -> Caused by: ").append(e.getClass().getName())
+						.append(": ");
+			}
+		}
+		return buf.toString();
 	}
 
 	@Override

@@ -17,6 +17,7 @@ public class WebContext implements HttpHandler {
 	private HttpContext httpContext;
 	private RestMethodProxy restMethodProxy = new RestMethodProxy();
 	static final String RESOURCE_ROOT = "RESOURCE_ROOT";
+	static final String RESOURCE_ERROR = "RESOURCE_ERROR";
 
 	public WebContext(WebResourceApplication application, HttpServer httpServer) {
 		httpContext = httpServer.createContext(application.getContextPath());
