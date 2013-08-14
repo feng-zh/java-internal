@@ -272,6 +272,8 @@ class RestMethodProxy {
 				buf.append('}');
 			}
 			return buf.toString();
+		} else if (object instanceof Boolean) {
+			return String.valueOf(object);
 		} else if (object instanceof Number) {
 			return String.valueOf(object);
 		} else if (object instanceof String) {

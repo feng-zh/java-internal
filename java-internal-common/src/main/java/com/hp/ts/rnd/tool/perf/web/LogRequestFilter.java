@@ -74,7 +74,7 @@ class LogRequestFilter extends com.sun.net.httpserver.Filter {
 	}
 
 	private void logError(HttpExchange exchange, Throwable e) {
-		// e.printStackTrace();
+		e.printStackTrace();
 		String errorLog = String.format(
 				"[%1$tF:%1$tT %1$tz] [error] [client %2$s] %3$s (%4$s)",
 				System.currentTimeMillis(), exchange.getRemoteAddress()
