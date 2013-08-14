@@ -1,11 +1,7 @@
 package com.hp.ts.rnd.tool.perf.web;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.List;
 
-import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -16,32 +12,23 @@ public class WebContext implements HttpHandler {
 
 	private HttpContext httpContext;
 	private RestMethodProxy restMethodProxy = new RestMethodProxy();
-	static final String RESOURCE_ROOT = "RESOURCE_ROOT";
 	static final String RESOURCE_ERROR = "RESOURCE_ERROR";
 
 	public WebContext(WebResourceApplication application, HttpServer httpServer) {
-		httpContext = httpServer.createContext(application.getContextPath());
+		String contextPath = application.getContextPath();
+		httpContext = httpServer.createContext(contextPath
+				+ (contextPath.endsWith("/") ? "" : "/"));
 		httpContext.setHandler(this);
-		setupFilters(httpContext.getFilters());
+		setupFilters(application);
 		addResources(application);
-		Class<?> clz = application.getClass();
-		URL clzUrl = clz.getResource("/" + clz.getName().replace('.', '/')
-				+ ".class");
-		try {
-			httpContext.getAttributes().put(
-					RESOURCE_ROOT,
-					new URL(clzUrl, clz.getPackage().getName()
-							.replace('.', '/').replaceAll("[^/]+", "..")));
-		} catch (MalformedURLException e) {
-			throw new IllegalArgumentException("invalid resource root url", e);
-		}
 	}
 
-	private void setupFilters(List<Filter> filters) {
-		filters.add(new LogRequestFilter());
-		filters.add(new ResponseHeaderFilter());
-		filters.add(new GZIPEncodingFilter());
-		filters.add(new StaticResourceFilter());
+	private void setupFilters(WebResourceApplication application) {
+		httpContext.getFilters().add(new LogRequestFilter());
+		httpContext.getFilters().add(new ResponseHeaderFilter());
+		httpContext.getFilters().add(new GZIPEncodingFilter());
+		httpContext.getFilters().add(
+				new StaticResourceFilter(application.getClass()));
 	}
 
 	private void addResources(WebResourceApplication application) {
@@ -54,7 +41,8 @@ public class WebContext implements HttpHandler {
 		String method = exchange.getRequestMethod();
 		String fileName = exchange.getRequestURI().toString()
 				.substring(exchange.getHttpContext().getPath().length());
-		if ("GET".equals(method)) {
+		if ("GET".equals(method) || "POST".equals(method)
+				|| "DELETE".equals(method)) {
 			service(fileName, exchange);
 		} else {
 			exchange.sendResponseHeaders(500, 0);

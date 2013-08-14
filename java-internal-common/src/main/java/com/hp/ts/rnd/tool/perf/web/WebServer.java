@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
 
 import com.sun.net.httpserver.HttpServer;
 
@@ -40,12 +41,13 @@ public class WebServer {
 				+ ", please access following endpoints: ");
 		for (Iterator<WebResourceApplication> iterator = services.iterator(); iterator
 				.hasNext();) {
-			System.out.println("http:/" + httpServer.getAddress()
+			System.out.println("- http:/" + httpServer.getAddress()
 					+ iterator.next().getContextPath());
 		}
 	}
 
 	public static void main(String[] args) throws IOException {
+		long startTime = System.nanoTime();
 		final WebServer server = new WebServer(7001);
 		server.start();
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -55,6 +57,9 @@ public class WebServer {
 				server.shutdown();
 			}
 		}));
+		System.out.println("System started in "
+				+ TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)
+				/ 1000.0 + " second.");
 	}
 
 	public void shutdown() {

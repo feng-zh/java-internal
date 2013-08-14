@@ -5,10 +5,14 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,6 +26,9 @@ import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.hp.ts.rnd.tool.perf.com.eclipsesource.json.JsonArray;
+import com.hp.ts.rnd.tool.perf.com.eclipsesource.json.JsonObject;
+import com.hp.ts.rnd.tool.perf.com.eclipsesource.json.JsonValue;
 import com.sun.net.httpserver.HttpExchange;
 
 @SuppressWarnings("restriction")
@@ -32,6 +39,7 @@ class RestMethodProxy {
 	private static class MethodProxy {
 		Method method;
 		Object proxy;
+		String httpMethod;
 
 		MethodProxy(Method method, Object proxy) {
 			this.method = method;
@@ -45,7 +53,6 @@ class RestMethodProxy {
 				InvocationTargetException, IOException {
 			Object ret = method.invoke(proxy);
 			sendResult(ret, exchange, output);
-
 		}
 
 		protected void sendResult(Object ret, HttpExchange exchange,
@@ -56,7 +63,7 @@ class RestMethodProxy {
 				exchange.sendResponseHeaders(200, 0);
 				output.write(bytes);
 			} else {
-				exchange.sendResponseHeaders(204, 0);
+				exchange.sendResponseHeaders(204, -1);
 			}
 		}
 	}
@@ -64,7 +71,7 @@ class RestMethodProxy {
 	private static class ParameterMethodProxy extends MethodProxy {
 
 		private static Pattern PathParameterPattern = Pattern
-				.compile("/\\{([^/]+)\\}");
+				.compile("\\{([^/]+)\\}");
 
 		private boolean[] parameterFragements;
 
@@ -93,7 +100,7 @@ class RestMethodProxy {
 		}
 
 		public static ParameterMethodProxy creatProxy(String path,
-				Method method, Object proxy) {
+				Method method, Object proxy, String httpMethod) {
 			Matcher matcher = PathParameterPattern.matcher(path);
 			List<String> pathFragements = new ArrayList<String>();
 			Set<String> parameterSet = new HashSet<String>();
@@ -102,8 +109,6 @@ class RestMethodProxy {
 				StringBuffer pathFragement = new StringBuffer();
 				matcher.appendReplacement(pathFragement, "");
 				if (pathFragement.length() > 0) {
-					// add first "/" in pattern
-					pathFragement.append("/");
 					pathFragements.add(pathFragement.toString());
 					parameterFragementList.add(false);
 				}
@@ -147,12 +152,23 @@ class RestMethodProxy {
 						methodParameterMap[i] = restParameter.value();
 						paramHasAnnot = true;
 						break;
+					} else if (paramAnnot[j].annotationType() == RestEntity.class) {
+						if (!httpMethod.equals("POST")
+								&& !httpMethod.equals("GET")) {
+							throw new IllegalArgumentException(
+									"The HTTP method "
+											+ httpMethod
+											+ " not support RestEntity annotation on parameter index "
+											+ (i + 1) + " for method: "
+											+ method);
+						}
+						paramHasAnnot = true;
 					}
 				}
 				if (!paramHasAnnot) {
 					throw new IllegalArgumentException(
-							"no path parameter found in method parameter on index'"
-									+ i + " for method: " + method);
+							"no path parameter found in method parameter on index "
+									+ (i + 1) + " for method: " + method);
 				}
 			}
 			return new ParameterMethodProxy(method, proxy,
@@ -172,7 +188,10 @@ class RestMethodProxy {
 			return buf.toString();
 		}
 
-		public Object match(String fileName) {
+		public Object match(String httpMethod, String fileName) {
+			if (!httpMethod.equals(this.httpMethod)) {
+				return null;
+			}
 			Matcher matcher = pathPattern.matcher(fileName);
 			if (matcher.matches()) {
 				Map<String, String> map = new HashMap<String, String>();
@@ -199,14 +218,51 @@ class RestMethodProxy {
 			Class<?>[] pt = method.getParameterTypes();
 			for (int i = 0; i < args.length; i++) {
 				try {
-					args[i] = convert(map.get(methodParameterMap[i]), pt[i]);
+					if (methodParameterMap[i] == null) {
+						// entity annotation
+						args[i] = convert(readAsString(exchange), pt[i]);
+					} else {
+						args[i] = convert(map.get(methodParameterMap[i]), pt[i]);
+					}
 				} catch (Exception e) {
 					throw new IllegalArgumentException(
-							"invalid parameter value on index: " + i, e);
+							"invalid parameter value on index: " + (i + 1), e);
 				}
 			}
 			Object ret = method.invoke(proxy, args);
 			sendResult(ret, exchange, output);
+		}
+
+		private String readAsString(HttpExchange exchange) throws IOException {
+			String contentType = exchange.getRequestHeaders().getFirst(
+					"Content-Type");
+			int charsetIndex = contentType.indexOf("charset=");
+			String charset = "UTF-8";
+			if (charsetIndex >= 0) {
+				try {
+					charset = Charset.forName(
+							contentType.substring(charsetIndex
+									+ ("charset=".length()))).name();
+				} catch (Exception ignored) {
+				}
+			}
+			StringWriter strings = new StringWriter();
+			InputStreamReader input = new InputStreamReader(
+					exchange.getRequestBody(), charset);
+			char[] buf = new char[1024];
+			int len;
+			try {
+				while ((len = input.read(buf)) != -1) {
+					strings.write(buf, 0, len);
+				}
+			} finally {
+				try {
+					input.close();
+				} catch (IOException ignored) {
+				}
+				strings.close();
+			}
+			return strings.toString();
 		}
 
 		private Object convert(Object obj, Class<?> type) {
@@ -237,9 +293,99 @@ class RestMethodProxy {
 							"convert primitive value fail: " + obj, e);
 				}
 			} else {
-				throw new UnsupportedOperationException(
-						"unsupport object convert for " + type);
+				// try POJO JSON reverse mapping
+				return fromJson(String.valueOf(obj), type);
+				// throw new UnsupportedOperationException(
+				// "unsupport object convert for " + type);
 			}
+		}
+	}
+
+	static Object fromJson(String text, Class<?> type) {
+		JsonValue jsonValue = JsonValue.readFrom(text);
+		return fromJson(jsonValue, type);
+	}
+
+	static Object fromJson(JsonValue jsonValue, Class<?> type) {
+		if (jsonValue.isArray()) {
+			JsonArray jsonArray = ((JsonArray) jsonValue);
+			if (type.isArray()) {
+				Object array = Array.newInstance(type.getComponentType(),
+						jsonArray.size());
+				for (int i = 0; i < jsonArray.size(); i++) {
+					Array.set(array, i,
+							fromJson(jsonArray.get(i), type.getComponentType()));
+				}
+				return array;
+			} else {
+				throw new UnsupportedOperationException(
+						"not support conver json array to " + type);
+			}
+		} else if (jsonValue.isBoolean()) {
+			if (type == Boolean.TYPE || type == Boolean.class) {
+				return jsonValue.asBoolean();
+			} else {
+				throw new UnsupportedOperationException(
+						"not support conver json boolean to " + type);
+			}
+		} else if (jsonValue.isNull()) {
+			if (type.isPrimitive()) {
+				throw new NullPointerException(
+						"null value cannot set as primitive type");
+			} else {
+				return null;
+			}
+		} else if (jsonValue.isNumber()) {
+			if (type == Integer.TYPE || type == Integer.class) {
+				return jsonValue.asInt();
+			} else if (type == Long.TYPE || type == Long.class) {
+				return jsonValue.asLong();
+			} else if (type == Double.TYPE || type == Double.class) {
+				return jsonValue.asDouble();
+			} else if (type == Float.TYPE || type == Float.class) {
+				return jsonValue.asFloat();
+			} else {
+				throw new UnsupportedOperationException(
+						"not support conver json number to " + type);
+			}
+		} else if (jsonValue.isObject()) {
+			JsonObject jsonObject = (JsonObject) jsonValue;
+			Object object;
+			try {
+				object = type.newInstance();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+			BeanInfo beanInfo;
+			try {
+				beanInfo = Introspector.getBeanInfo(type);
+			} catch (IntrospectionException e) {
+				throw new RuntimeException(e);
+			}
+			for (PropertyDescriptor pd : beanInfo.getPropertyDescriptors()) {
+				if (pd.getWriteMethod() != null) {
+					JsonValue fieldValue = jsonObject.get(pd.getName());
+					if (fieldValue != null) {
+						try {
+							pd.getWriteMethod().invoke(object,
+									fromJson(fieldValue, pd.getPropertyType()));
+						} catch (Exception e) {
+							throw new RuntimeException(e);
+						}
+					}
+				}
+			}
+			return object;
+		} else if (jsonValue.isString()) {
+			if (type == String.class) {
+				return jsonValue.asString();
+			} else {
+				throw new UnsupportedOperationException(
+						"not support conver json string to " + type);
+			}
+		} else {
+			throw new UnsupportedOperationException("not support conver "
+					+ jsonValue.getClass().getSimpleName() + " to " + type);
 		}
 	}
 
@@ -358,17 +504,32 @@ class RestMethodProxy {
 		for (Method m : root.getClass().getMethods()) {
 			if (m.isAnnotationPresent(RestPath.class)) {
 				String path = m.getAnnotation(RestPath.class).value();
-				ParameterMethodProxy pProxy = ParameterMethodProxy.creatProxy(
-						path, m, root);
-				if (pProxy != null) {
-					parameterMethodProxys.put(pProxy.getPathTemplate(), pProxy);
-					path = pProxy.getPathTemplate();
-				} else {
-					MethodProxy proxy = new MethodProxy(m, root);
-					methodProxys.put(path, proxy);
+				if (path.startsWith("/")) {
+					path = path.substring(1, path.length());
 				}
-				System.out.println("register on path " + path + " for method "
-						+ m);
+				RestMethod restMethod = m.getAnnotation(RestMethod.class);
+				String restMethodValue;
+				if (restMethod != null) {
+					restMethodValue = restMethod.value();
+				} else {
+					restMethodValue = "GET";
+				}
+				ParameterMethodProxy pProxy = ParameterMethodProxy.creatProxy(
+						path, m, root, restMethodValue);
+				MethodProxy proxy;
+				if (pProxy != null) {
+					parameterMethodProxys.put(
+							restMethodValue + "|" + pProxy.getPathTemplate(),
+							pProxy);
+					path = pProxy.getPathTemplate();
+					proxy = pProxy;
+				} else {
+					proxy = new MethodProxy(m, root);
+					methodProxys.put(restMethodValue + "|" + path, proxy);
+				}
+				proxy.httpMethod = restMethodValue;
+				System.out.println("register " + restMethodValue + " on path "
+						+ path + " for method " + m);
 			}
 		}
 	}
@@ -380,12 +541,13 @@ class RestMethodProxy {
 			fileName = fileName.substring(0, paramIndex);
 		}
 		Object handback = null;
+		String httpMethod = exchange.getRequestMethod();
 		// quick check first
-		MethodProxy methodProxy = methodProxys.get(fileName);
+		MethodProxy methodProxy = methodProxys.get(httpMethod + "|" + fileName);
 		if (methodProxy == null) {
 			// check path parameter match
 			for (ParameterMethodProxy proxy : parameterMethodProxys.values()) {
-				handback = proxy.match(fileName);
+				handback = proxy.match(httpMethod, fileName);
 				if (handback != null) {
 					methodProxy = proxy;
 					break;
@@ -402,12 +564,21 @@ class RestMethodProxy {
 				exchange.setAttribute(WebContext.RESOURCE_ERROR, e);
 				// invalid input
 				exchange.sendResponseHeaders(400, 0);
+				exchange.getResponseBody().write(
+						"<h1>400 Bad Request</h1>The request cannot be fulfilled due to bad syntax."
+								.getBytes());
 			} catch (Exception e) {
 				exchange.setAttribute(WebContext.RESOURCE_ERROR, e);
 				exchange.sendResponseHeaders(500, 0);
+				exchange.getResponseBody().write(
+						"<h1>500 Internal Server Error</h1>The server encountered an unexpected error."
+								.getBytes());
 			}
 		} else {
 			exchange.sendResponseHeaders(404, 0);
+			exchange.getResponseBody().write(
+					"<h1>404 Not Found</h1>The requested URL was not found on this server."
+							.getBytes());
 		}
 	}
 }
