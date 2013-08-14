@@ -9,13 +9,16 @@ import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -241,7 +244,9 @@ class RestMethodProxy {
 	}
 
 	static String toJson(Object object) {
-		if (object instanceof Iterable) {
+		if (object == null) {
+			return "null";
+		} else if (object instanceof Iterable) {
 			Iterable<?> it = (Iterable<?>) object;
 			StringBuffer buf = new StringBuffer();
 			buf.append('[');
@@ -271,7 +276,12 @@ class RestMethodProxy {
 			return String.valueOf(object);
 		} else if (object instanceof String) {
 			return "\"" + escape((String) object) + "\"";
-		} else if (object != null) {
+		} else if (object instanceof Date) {
+			SimpleDateFormat format = new SimpleDateFormat(
+					"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+			format.setTimeZone(TimeZone.getTimeZone("UTC"));
+			return '"' + format.format((Date) object) + '"';
+		} else {
 			BeanInfo beanInfo;
 			try {
 				beanInfo = Introspector.getBeanInfo(object.getClass());
@@ -292,33 +302,54 @@ class RestMethodProxy {
 				}
 			}
 			return toJson(map);
-		} else {
-			return String.valueOf(object);
 		}
 	}
 
 	static String escape(String s) {
-		StringBuilder a = new StringBuilder();
-		for (int i = 0; i < s.length(); ++i) {
-			char c = s.charAt(i);
-			if (c == '\\')
-				a.append("\\\\");
-			else if (c == '"')
-				a.append("\\\"");
-			else if (c == '\n')
-				a.append("\\n");
-			else if (c == '\r')
-				a.append("\\r");
-			else if (c == '\t')
-				a.append("\\t");
-			else if (c == '\b')
-				a.append("\\b");
-			else if (c < 32)
-				continue;
-			else
-				a.append(c);
-		}
-		return a.toString();
+		StringBuffer sb = new StringBuffer();
+		for (int i = 0; i < s.length(); i++) {
+			char ch = s.charAt(i);
+			switch (ch) {
+			case '"':
+				sb.append("\\\"");
+				break;
+			case '\\':
+				sb.append("\\\\");
+				break;
+			case '\b':
+				sb.append("\\b");
+				break;
+			case '\f':
+				sb.append("\\f");
+				break;
+			case '\n':
+				sb.append("\\n");
+				break;
+			case '\r':
+				sb.append("\\r");
+				break;
+			case '\t':
+				sb.append("\\t");
+				break;
+			case '/':
+				sb.append("\\/");
+				break;
+			default:
+				if ((ch >= '\u0000' && ch <= '\u001F')
+						|| (ch >= '\u007F' && ch <= '\u009F')
+						|| (ch >= '\u2000' && ch <= '\u20FF')) {
+					String ss = Integer.toHexString(ch);
+					sb.append("\\u");
+					for (int j = 0; j < 4 - ss.length(); j++) {
+						sb.append('0');
+					}
+					sb.append(ss.toUpperCase());
+				} else {
+					sb.append(ch);
+				}
+			}
+		}// for
+		return sb.toString();
 	}
 
 	public void addRootResources(Object root) {
