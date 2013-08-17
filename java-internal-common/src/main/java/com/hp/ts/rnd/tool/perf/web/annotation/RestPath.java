@@ -1,4 +1,4 @@
-package com.hp.ts.rnd.tool.perf.web;
+package com.hp.ts.rnd.tool.perf.web.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

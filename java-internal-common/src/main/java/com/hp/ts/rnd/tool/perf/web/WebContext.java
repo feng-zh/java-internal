@@ -46,8 +46,8 @@ public class WebContext implements HttpHandler {
 			service(fileName, exchange);
 		} else {
 			exchange.sendResponseHeaders(500, 0);
+			exchange.close();
 		}
-		exchange.close();
 	}
 
 	private void service(String fileName, HttpExchange exchange)

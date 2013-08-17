@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.hp.ts.rnd.tool.perf.hprof.historm.InstanceHistogram;
 import com.hp.ts.rnd.tool.perf.hprof.historm.InstanceHistogram.InstanceHistogramEntry;
-import com.hp.ts.rnd.tool.perf.web.RestPath;
+import com.hp.ts.rnd.tool.perf.web.annotation.RestPath;
 
 class InstanceHistogramController {
 

@@ -1,5 +1,6 @@
 package com.hp.ts.rnd.tool.perf.web;
 
+import java.io.BufferedOutputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.util.zip.GZIPOutputStream;
@@ -17,8 +18,10 @@ class GZIPEncodingFilter extends com.sun.net.httpserver.Filter {
 				&& headers.getFirst("Accept-Encoding").contains("gzip")) {
 			// gzip required
 			exchange.getResponseHeaders().add("Content-Encoding", "gzip");
-			exchange.setStreams(exchange.getRequestBody(),
-					new FilterOutputStream(exchange.getResponseBody()) {
+			exchange.setStreams(
+					exchange.getRequestBody(),
+					new BufferedOutputStream(new FilterOutputStream(exchange
+							.getResponseBody()) {
 
 						@Override
 						public void write(int paramInt) throws IOException {
@@ -42,7 +45,7 @@ class GZIPEncodingFilter extends com.sun.net.httpserver.Filter {
 							}
 						}
 
-					});
+					}));
 		}
 		chain.doFilter(exchange);
 	}

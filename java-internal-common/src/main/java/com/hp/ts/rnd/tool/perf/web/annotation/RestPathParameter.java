@@ -1,14 +1,14 @@
-package com.hp.ts.rnd.tool.perf.web;
+package com.hp.ts.rnd.tool.perf.web.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.METHOD)
+@Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface RestMethod {
+public @interface RestPathParameter {
 
-	String value() default "GET";
+	String value();
 
 }
