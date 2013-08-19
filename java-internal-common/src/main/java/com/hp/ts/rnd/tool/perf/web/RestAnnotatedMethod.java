@@ -284,6 +284,7 @@ public class RestAnnotatedMethod {
 		@Override
 		public void processResult(Object ret, HttpExchange exchange)
 				throws Exception {
+			exchange.setAttribute(WebContext.CONNECTION_ASYNC, Boolean.TRUE);
 		}
 
 		@Override

@@ -13,6 +13,7 @@ public class WebContext implements HttpHandler {
 	private HttpContext httpContext;
 	private RestMethodProxy restMethodProxy = new RestMethodProxy();
 	static final String RESOURCE_ERROR = "RESOURCE_ERROR";
+	static final String CONNECTION_ASYNC = "CONNECTION_ASYNC";
 
 	public WebContext(WebResourceApplication application, HttpServer httpServer) {
 		String contextPath = application.getContextPath();
