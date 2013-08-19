@@ -12,9 +12,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -160,95 +164,130 @@ class RestUtils {
 		return sb.toString();
 	}
 
-	private static Object fromJson(JsonValue jsonValue, Class<?> type) {
-		if (jsonValue.isArray()) {
-			JsonArray jsonArray = ((JsonArray) jsonValue);
-			if (type.isArray()) {
-				Object array = Array.newInstance(type.getComponentType(),
-						jsonArray.size());
-				for (int i = 0; i < jsonArray.size(); i++) {
-					Array.set(array, i,
-							fromJson(jsonArray.get(i), type.getComponentType()));
+	private static Object fromJson(JsonValue jsonValue, Type jType) {
+		if (jType instanceof Class) {
+			Class<?> type = (Class<?>) jType;
+			if (jsonValue.isArray()) {
+				JsonArray jsonArray = ((JsonArray) jsonValue);
+				if (type.isArray()) {
+					Object array = Array.newInstance(type.getComponentType(),
+							jsonArray.size());
+					for (int i = 0; i < jsonArray.size(); i++) {
+						Array.set(
+								array,
+								i,
+								fromJson(jsonArray.get(i),
+										type.getComponentType()));
+					}
+					return array;
+				} else {
+					throw new UnsupportedOperationException(
+							"not support conver json array to " + type);
 				}
-				return array;
-			} else {
-				throw new UnsupportedOperationException(
-						"not support conver json array to " + type);
-			}
-		} else if (jsonValue.isBoolean()) {
-			if (type == Boolean.TYPE || type == Boolean.class) {
-				return jsonValue.asBoolean();
-			} else {
-				throw new UnsupportedOperationException(
-						"not support conver json boolean to " + type);
-			}
-		} else if (jsonValue.isNull()) {
-			if (type.isPrimitive()) {
-				throw new NullPointerException(
-						"null value cannot set as primitive type");
-			} else {
-				return null;
-			}
-		} else if (jsonValue.isNumber()) {
-			if (type == Integer.TYPE || type == Integer.class) {
-				return jsonValue.asInt();
-			} else if (type == Long.TYPE || type == Long.class) {
-				return jsonValue.asLong();
-			} else if (type == Double.TYPE || type == Double.class) {
-				return jsonValue.asDouble();
-			} else if (type == Float.TYPE || type == Float.class) {
-				return jsonValue.asFloat();
-			} else {
-				throw new UnsupportedOperationException(
-						"not support conver json number to " + type);
-			}
-		} else if (jsonValue.isObject()) {
-			JsonObject jsonObject = (JsonObject) jsonValue;
-			Object object;
-			try {
-				Constructor<?> constructor = type.getDeclaredConstructor();
-				constructor.setAccessible(true);
-				object = constructor.newInstance();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-			BeanInfo beanInfo;
-			try {
-				beanInfo = Introspector.getBeanInfo(type);
-			} catch (IntrospectionException e) {
-				throw new RuntimeException(e);
-			}
-			for (PropertyDescriptor pd : beanInfo.getPropertyDescriptors()) {
-				if (pd.getWriteMethod() != null) {
-					JsonValue fieldValue = jsonObject.get(pd.getName());
-					if (fieldValue != null) {
-						try {
-							pd.getWriteMethod().setAccessible(true);
-							pd.getWriteMethod().invoke(object,
-									fromJson(fieldValue, pd.getPropertyType()));
-						} catch (Exception e) {
-							throw new RuntimeException(e);
+			} else if (jsonValue.isBoolean()) {
+				if (type == Boolean.TYPE || type == Boolean.class) {
+					return jsonValue.asBoolean();
+				} else {
+					throw new UnsupportedOperationException(
+							"not support conver json boolean to " + type);
+				}
+			} else if (jsonValue.isNull()) {
+				if (type.isPrimitive()) {
+					throw new NullPointerException(
+							"null value cannot set as primitive type");
+				} else {
+					return null;
+				}
+			} else if (jsonValue.isNumber()) {
+				if (type == Integer.TYPE || type == Integer.class) {
+					return jsonValue.asInt();
+				} else if (type == Long.TYPE || type == Long.class) {
+					return jsonValue.asLong();
+				} else if (type == Double.TYPE || type == Double.class) {
+					return jsonValue.asDouble();
+				} else if (type == Float.TYPE || type == Float.class) {
+					return jsonValue.asFloat();
+				} else {
+					throw new UnsupportedOperationException(
+							"not support conver json number to " + type);
+				}
+			} else if (jsonValue.isObject()) {
+				JsonObject jsonObject = (JsonObject) jsonValue;
+				Object object;
+				try {
+					Constructor<?> constructor = type.getDeclaredConstructor();
+					constructor.setAccessible(true);
+					object = constructor.newInstance();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				BeanInfo beanInfo;
+				try {
+					beanInfo = Introspector.getBeanInfo(type);
+				} catch (IntrospectionException e) {
+					throw new RuntimeException(e);
+				}
+				for (PropertyDescriptor pd : beanInfo.getPropertyDescriptors()) {
+					if (pd.getWriteMethod() != null) {
+						JsonValue fieldValue = jsonObject.get(pd.getName());
+						if (fieldValue != null) {
+							try {
+								pd.getWriteMethod().setAccessible(true);
+								pd.getWriteMethod().invoke(
+										object,
+										fromJson(fieldValue,
+												pd.getPropertyType()));
+							} catch (Exception e) {
+								throw new RuntimeException(e);
+							}
 						}
 					}
 				}
+				return object;
+			} else if (jsonValue.isString()) {
+				if (type == String.class) {
+					return jsonValue.asString();
+				} else {
+					throw new UnsupportedOperationException(
+							"not support conver json string to " + type);
+				}
 			}
-			return object;
-		} else if (jsonValue.isString()) {
-			if (type == String.class) {
-				return jsonValue.asString();
-			} else {
-				throw new UnsupportedOperationException(
-						"not support conver json string to " + type);
+		} else if (jType instanceof ParameterizedType) {
+			ParameterizedType type = (ParameterizedType) jType;
+			if (jsonValue.isArray()) {
+				JsonArray jsonArray = ((JsonArray) jsonValue);
+				if (type.getRawType() instanceof Class
+						&& ((Class<?>) type.getRawType())
+								.isAssignableFrom(List.class)) {
+					ArrayList<Object> list = new ArrayList<Object>();
+					for (int i = 0; i < jsonArray.size(); i++) {
+						list.add(fromJson(jsonArray.get(i),
+								type.getActualTypeArguments()[0]));
+					}
+					return list;
+				}
 			}
-		} else {
-			throw new UnsupportedOperationException("not support conver "
-					+ jsonValue.getClass().getSimpleName() + " to " + type);
 		}
+		throw new UnsupportedOperationException("not support conver "
+				+ jsonValue.getClass().getSimpleName() + " to " + jType);
 	}
 
-	public static Object fromJson(String text, Class<?> type) {
+	public static Object fromJson(String text, Type type) {
 		JsonValue jsonValue = JsonValue.readFrom(text);
 		return fromJson(jsonValue, type);
+	}
+
+	public static Object convert(Object obj, Type type) {
+		if (type instanceof Class) {
+			return convert(obj, (Class<?>) type);
+		} else {
+			if (obj == null) {
+				throw new NullPointerException(
+						"expect non-null value with type " + type);
+			} else {
+				return fromJson(String.valueOf(obj), type);
+			}
+		}
 	}
 
 	public static Object convert(Object obj, Class<?> type) {

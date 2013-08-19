@@ -43,7 +43,7 @@ public class WebContext implements HttpHandler {
 		String fileName = exchange.getRequestURI().toString()
 				.substring(exchange.getHttpContext().getPath().length());
 		if ("GET".equals(method) || "POST".equals(method)
-				|| "DELETE".equals(method)) {
+				|| "DELETE".equals(method) || "PUT".equals(method)) {
 			service(fileName, exchange);
 		} else {
 			exchange.sendResponseHeaders(500, 0);

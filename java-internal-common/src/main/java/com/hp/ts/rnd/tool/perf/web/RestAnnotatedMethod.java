@@ -6,6 +6,7 @@ import java.io.ObjectOutput;
 import java.io.StringWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -218,7 +219,7 @@ public class RestAnnotatedMethod {
 											+ method);
 						}
 						parameterHandlers[i] = new RestEntityParameterHandler(
-								method.getParameterTypes()[i]);
+								method.getGenericParameterTypes()[i]);
 						break;
 					}
 				}
@@ -231,9 +232,9 @@ public class RestAnnotatedMethod {
 	private static class RestEntityParameterHandler implements
 			RestParameterHandler {
 
-		private final Class<?> parameterType;
+		private final Type parameterType;
 
-		public RestEntityParameterHandler(Class<?> parameterType) {
+		public RestEntityParameterHandler(Type parameterType) {
 			this.parameterType = parameterType;
 		}
 
