@@ -3,8 +3,8 @@ package com.hp.ts.rnd.tool.perf.web;
 import java.io.BufferedOutputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
-import java.util.zip.GZIPOutputStream;
 
+import com.hp.ts.rnd.tool.perf.org.apache.coyote.http11.filters.FlushableGZIPOutputStream;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -40,8 +40,8 @@ class GZIPEncodingFilter extends com.sun.net.httpserver.Filter {
 						}
 
 						private void setGzipStream() throws IOException {
-							if (!(out instanceof GZIPOutputStream)) {
-								out = new GZIPOutputStream(out);
+							if (!(out instanceof FlushableGZIPOutputStream)) {
+								out = new FlushableGZIPOutputStream(out);
 							}
 						}
 

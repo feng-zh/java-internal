@@ -1,6 +1,5 @@
 package com.hp.ts.rnd.tool.perf.web;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectOutput;
@@ -285,8 +284,6 @@ public class RestAnnotatedMethod {
 		@Override
 		public void processResult(Object ret, HttpExchange exchange)
 				throws Exception {
-			exchange.getResponseHeaders().remove("Connection");
-			exchange.sendResponseHeaders(200, 0);
 		}
 
 		@Override
@@ -327,13 +324,7 @@ public class RestAnnotatedMethod {
 			exchange.getResponseHeaders().set("Content-Type",
 					"text/event-stream");
 			return RestUtils.createRestOutputStream(new ServerSentEventOutput(
-					exchange.getResponseBody(), new Closeable() {
-
-						@Override
-						public void close() throws IOException {
-							exchange.close();
-						}
-					}));
+					exchange.getResponseBody(), exchange));
 		}
 
 	}
