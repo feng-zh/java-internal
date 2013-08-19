@@ -209,8 +209,7 @@ public class RestAnnotatedMethod {
 				Annotation[] paramAnnot = annotations[i];
 				for (int j = 0; j < paramAnnot.length; j++) {
 					if (paramAnnot[j].annotationType() == RestEntity.class) {
-						if (!httpMethod.equals("POST")
-								&& !httpMethod.equals("GET")) {
+						if (httpMethod.equals("DELETE")) {
 							throw new IllegalArgumentException(
 									"The HTTP method "
 											+ httpMethod

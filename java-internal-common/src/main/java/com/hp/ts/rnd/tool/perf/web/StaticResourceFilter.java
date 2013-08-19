@@ -69,6 +69,7 @@ class StaticResourceFilter extends com.sun.net.httpserver.Filter {
 				if (resource == NOT_MODIFIED_STREAM) {
 					// not modified
 					exchange.sendResponseHeaders(304, -1);
+					exchange.close();
 				} else {
 					sendFile(exchange, fileName, resource);
 				}
