@@ -1,7 +1,6 @@
 package com.hp.ts.rnd.tool.perf.web;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,8 +33,7 @@ public class WebServer {
 				.hasNext();) {
 			addResourceApplication(iterator.next());
 		}
-		httpServer.bind(
-				new InetSocketAddress(InetAddress.getLocalHost(), port), 10);
+		httpServer.bind(new InetSocketAddress(port), 10);
 		httpServer.start();
 		System.out.println("Server started on port " + port
 				+ ", please access following endpoints: ");
@@ -48,7 +46,15 @@ public class WebServer {
 
 	public static void main(String[] args) throws IOException {
 		long startTime = System.nanoTime();
-		final WebServer server = new WebServer(7001);
+		int port = 7001;
+		if (args.length > 0) {
+			try {
+				port = Integer.parseInt(args[0]);
+			} catch (NumberFormatException e) {
+				System.err.println("Invalid port, use default value: " + port);
+			}
+		}
+		final WebServer server = new WebServer(port);
 		server.start();
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 
