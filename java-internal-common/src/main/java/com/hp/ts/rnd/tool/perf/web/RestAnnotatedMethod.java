@@ -324,6 +324,7 @@ public class RestAnnotatedMethod {
 		private static ObjectOutput createSSEWriter(final HttpExchange exchange) {
 			exchange.getResponseHeaders().set("Content-Type",
 					"text/event-stream");
+			exchange.getResponseHeaders().set("Cache-Control", "no-cache");
 			return RestUtils.createRestOutputStream(new ServerSentEventOutput(
 					exchange.getResponseBody(), exchange));
 		}
